@@ -1,0 +1,54 @@
+# Version Control Ignore Rules for SmartAttend AI
+
+# OS files
+.DS_Store
+Thumbs.db
+db.sqlite3
+
+# IDEs
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.iml
+
+# Python / Backend
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+/backend/storage/
+/backend/logs/
+
+# Secrets / Environment
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Node / Frontend Build Tools (if any)
+node_modules/
+npm-debug.log*
+
+# Flutter / Mobile (covered in mobile/.gitignore, but added here for safety)
+/mobile/.dart_tool/
+/mobile/build/
+/mobile/.flutter-plugins
+/mobile/ios/Flutter/flutter_export_environment.sh
+/app-debug.apk
+/mobile/build/
+*.apk
