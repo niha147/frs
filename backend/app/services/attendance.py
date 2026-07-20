@@ -284,11 +284,12 @@ class AttendanceService:
         self,
         student_id: uuid.UUID,
         class_id: int,
-        latitude: float,
-        longitude: float,
         device_id: str,
         image_bytes: bytes,
-        image_matrix
+        image_matrix,
+        location_available: bool = True,
+        latitude: Optional[float] = None,
+        longitude: Optional[float] = None
     ) -> Attendance:
         """Processes student self-marked attendance with geofence, device binding, and face check."""
         student = await self.student_repo.get_by_id(student_id)
@@ -322,6 +323,12 @@ class AttendanceService:
             
         # Geofencing check
         if class_session.latitude is not None and class_session.longitude is not None:
+            if not location_available or latitude is None or longitude is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Location access is required for this class."
+                )
+
             import math
             lat1, lon1 = class_session.latitude, class_session.longitude
             lat2, lon2 = latitude, longitude
@@ -341,7 +348,7 @@ class AttendanceService:
             if distance > allowed_radius:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"You are outside the classroom boundary. Distance: {int(distance)}m, Limit: {int(allowed_radius)}m."
+                    detail=f"You are outside the classroom attendance zone. Distance: {int(distance)}m, Limit: {int(allowed_radius)}m."
                 )
 
         # Face verification matching

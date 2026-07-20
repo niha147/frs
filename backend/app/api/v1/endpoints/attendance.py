@@ -185,11 +185,12 @@ async def list_student_attendance(
 @router.post("/self-scan", response_model=AttendanceOut)
 async def student_self_scan(
     class_id: int = Form(..., description="ID of the class session"),
-    latitude: float = Form(..., description="Student current latitude"),
-    longitude: float = Form(..., description="Student current longitude"),
     device_id: str = Form(..., description="Student device ID"),
     challenge_id: str = Form(..., description="Liveness challenge ID fetched from /attendance/challenge"),
     file: UploadFile = File(..., description="Selfie for face matching"),
+    location_available: bool = Form(True, description="Whether GPS location permission is granted"),
+    latitude: Optional[float] = Form(None, description="Student current latitude"),
+    longitude: Optional[float] = Form(None, description="Student current longitude"),
     blink_simulated: bool = Form(True, description="Simulation flag for eye blink"),
     yaw_simulated: bool = Form(True, description="Simulation flag for head turn"),
     smile_simulated: bool = Form(True, description="Simulation flag for smile"),
@@ -246,6 +247,7 @@ async def student_self_scan(
     return await service.process_self_scan(
         student_id=current_student.id,
         class_id=class_id,
+        location_available=location_available,
         latitude=latitude,
         longitude=longitude,
         device_id=device_id,

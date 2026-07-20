@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_frs/core/network/api_client.dart';
 import 'package:smart_frs/presentation/providers/student_portal_provider.dart';
 
+enum LocationPermissionMode { granted, denied }
+
 class SelfAttendanceScanScreen extends ConsumerStatefulWidget {
   final int classId;
   const SelfAttendanceScanScreen({super.key, required this.classId});
@@ -30,8 +32,9 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
   Timer? _timer;
   bool _challengeExpired = false;
 
-  // Geofence simulation settings for testing on emulator/device
-  bool _simulateInsideGeofence = true;
+  // GPS Geofence State
+  LocationPermissionMode _permMode = LocationPermissionMode.granted;
+  bool _isInsideZone = true; // true = 14m, false = 1,800m away
 
   @override
   void initState() {
@@ -98,15 +101,8 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
       }
     } catch (e) {
       if (mounted) {
-        String msg = "Could not fetch liveness challenge.";
-        if (e is DioException && e.response?.data != null) {
-          try {
-            msg = e.response!.data['detail'] ?? e.response!.data['error']['message'];
-          } catch (_) {}
-        }
         setState(() {
-          _instruction = "Challenge Error: $msg";
-          _challengeExpired = true;
+          _instruction = "Error fetching challenge. Tap refresh.";
         });
       }
     }
@@ -115,13 +111,15 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_secondsRemaining > 1) {
-        setState(() => _secondsRemaining--);
+        setState(() {
+          _secondsRemaining--;
+        });
       } else {
-        timer.cancel();
+        _timer?.cancel();
         setState(() {
           _secondsRemaining = 0;
           _challengeExpired = true;
-          _instruction = "Challenge expired. Tap refresh to get a new challenge.";
+          _instruction = "Challenge expired! Tap 🔄 to get a new challenge.";
         });
       }
     });
@@ -155,13 +153,14 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
       final prefs = await SharedPreferences.getInstance();
       final deviceId = prefs.getString('simulated_device_id') ?? 'unknown_device_id';
 
-      final double lat = _simulateInsideGeofence ? 12.9716 : 12.9850;
-      final double lon = _simulateInsideGeofence ? 77.5946 : 77.6100;
+      final bool isLocationAvailable = _permMode == LocationPermissionMode.granted;
+      // Nullable coordinates (no 0.0, 0.0 fallbacks)
+      final double? lat = isLocationAvailable ? (_isInsideZone ? 12.9716 : 12.9850) : null;
+      final double? lon = isLocationAvailable ? (_isInsideZone ? 77.5946 : 77.6100) : null;
 
-      final formData = FormData.fromMap({
+      final formDataMap = <String, dynamic>{
         'class_id': widget.classId,
-        'latitude': lat,
-        'longitude': lon,
+        'location_available': isLocationAvailable,
         'device_id': deviceId,
         'challenge_id': _challengeId,
         'blink_simulated': _challengeType == 'blink',
@@ -172,7 +171,14 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
           bytes,
           filename: 'selfie.jpg',
         ),
-      });
+      };
+
+      if (lat != null && lon != null) {
+        formDataMap['latitude'] = lat;
+        formDataMap['longitude'] = lon;
+      }
+
+      final formData = FormData.fromMap(formDataMap);
 
       final dio = ref.read(dioProvider);
       final response = await dio.post('/attendance/self-scan', data: formData);
@@ -224,29 +230,45 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
   Widget build(BuildContext context) {
     if (_errorMsg.isNotEmpty) {
       return Scaffold(
-        appBar: AppBar(title: const Text("Self Recognition")),
-        body: Center(child: Text(_errorMsg, style: const TextStyle(color: Colors.red))),
+        backgroundColor: Colors.black,
+        appBar: AppBar(title: const Text("Self Attendance Scan")),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Text(
+              _errorMsg,
+              style: const TextStyle(color: Colors.redAccent, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
       );
     }
 
-    if (!_isInit || _controller == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text("Self Recognition")),
-        body: const Center(child: CircularProgressIndicator()),
+    if (!_isInit) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: CircularProgressIndicator(color: Colors.tealAccent),
+        ),
       );
     }
+
+    final int distanceMeters = _permMode == LocationPermissionMode.denied
+        ? 0
+        : (_isInsideZone ? 14 : 1850);
 
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text("Challenge Verification"),
+        title: const Text("Self Attendance Scan"),
         backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+        elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded, color: Colors.tealAccent),
             onPressed: _fetchChallenge,
-            tooltip: "Refresh Challenge",
+            tooltip: "Get New Liveness Challenge",
           ),
         ],
       ),
@@ -272,6 +294,7 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
                     child: CameraPreview(_controller!),
                   ),
                 ),
+                // Oval face framing overlay
                 Positioned.fill(
                   child: Center(
                     child: Container(
@@ -289,8 +312,9 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
                     ),
                   ),
                 ),
+                // Top Challenge Instruction Banner
                 Positioned(
-                  top: 20,
+                  top: 16,
                   left: 16,
                   right: 16,
                   child: Card(
@@ -349,76 +373,140 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
                     ),
                   ),
                 ),
+                // Bottom GPS Location Status Card
                 Positioned(
-                  bottom: 120,
-                  left: 20,
-                  right: 20,
+                  bottom: 110,
+                  left: 16,
+                  right: 16,
                   child: Card(
-                    color: Colors.black.withAlpha(180),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    color: Colors.black.withAlpha(220),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(
+                        color: _permMode == LocationPermissionMode.denied
+                            ? Colors.amber
+                            : (_isInsideZone ? Colors.greenAccent : Colors.redAccent),
+                        width: 1.5,
+                      ),
+                    ),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      padding: const EdgeInsets.all(14.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            "Mock Location:",
-                            style: TextStyle(color: Colors.white70, fontSize: 13),
-                          ),
-                          DropdownButton<bool>(
-                            value: _simulateInsideGeofence,
-                            dropdownColor: Colors.black87,
-                            style: const TextStyle(color: Colors.tealAccent, fontSize: 13),
-                            underline: Container(),
-                            items: const [
-                              DropdownMenuItem(
-                                value: true,
-                                child: Text("Inside Classroom (PASS)"),
+                          Row(
+                            children: [
+                              Icon(
+                                _permMode == LocationPermissionMode.denied
+                                    ? Icons.location_off_rounded
+                                    : (_isInsideZone ? Icons.location_on_rounded : Icons.wrong_location_rounded),
+                                color: _permMode == LocationPermissionMode.denied
+                                    ? Colors.amber
+                                    : (_isInsideZone ? Colors.greenAccent : Colors.redAccent),
+                                size: 22,
                               ),
-                              DropdownMenuItem(
-                                value: false,
-                                child: Text("Outside Classroom (FAIL)"),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _permMode == LocationPermissionMode.denied
+                                      ? "Location access is required for this class."
+                                      : (_isInsideZone
+                                          ? "You are inside the classroom attendance zone."
+                                          : "You are outside the classroom attendance zone."),
+                                  style: TextStyle(
+                                    color: _permMode == LocationPermissionMode.denied
+                                        ? Colors.amberAccent
+                                        : (_isInsideZone ? Colors.greenAccent : Colors.redAccent),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
                             ],
-                            onChanged: (val) {
-                              if (val != null) {
-                                setState(() {
-                                  _simulateInsideGeofence = val;
-                                });
-                              }
-                            },
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _permMode == LocationPermissionMode.denied
+                                    ? "Permission: Denied"
+                                    : "Permission: Granted",
+                                style: const TextStyle(color: Colors.white70, fontSize: 11),
+                              ),
+                              if (_permMode == LocationPermissionMode.granted)
+                                Text(
+                                  "Distance: ${distanceMeters}m from room",
+                                  style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600),
+                                ),
+                            ],
+                          ),
+                          const Divider(color: Colors.white24, height: 16),
+                          // Location Controls / Test Simulator
+                          Row(
+                            children: [
+                              const Text(
+                                "GPS Simulation:",
+                                style: TextStyle(color: Colors.white60, fontSize: 11),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: DropdownButton<String>(
+                                  value: _permMode == LocationPermissionMode.denied
+                                      ? "denied"
+                                      : (_isInsideZone ? "inside" : "outside"),
+                                  isExpanded: true,
+                                  dropdownColor: Colors.black90,
+                                  style: const TextStyle(color: Colors.tealAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                                  underline: Container(),
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: "inside",
+                                      child: Text("Inside Zone (14m) — PASS"),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: "outside",
+                                      child: Text("Outside Zone (1850m) — FAIL"),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: "denied",
+                                      child: Text("Location Permission Denied — FAIL"),
+                                    ),
+                                  ],
+                                  onChanged: (val) {
+                                    setState(() {
+                                      if (val == "denied") {
+                                        _permMode = LocationPermissionMode.denied;
+                                      } else if (val == "inside") {
+                                        _permMode = LocationPermissionMode.granted;
+                                        _isInsideZone = true;
+                                      } else {
+                                        _permMode = LocationPermissionMode.granted;
+                                        _isInsideZone = false;
+                                      }
+                                    });
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
                   ),
                 ),
+                // Bottom Submit Action Button
                 Positioned(
                   bottom: 30,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: _challengeExpired
-                        ? ElevatedButton.icon(
-                            onPressed: _fetchChallenge,
-                            icon: const Icon(Icons.refresh),
-                            label: const Text("Get New Challenge"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.amber.shade700,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
-                          )
-                        : FloatingActionButton.large(
-                            onPressed: _submitSelfAttendance,
-                            backgroundColor: Colors.teal,
-                            foregroundColor: Colors.white,
-                            child: const Text(
-                              "Submit",
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
+                  left: 20,
+                  right: 20,
+                  child: ElevatedButton.icon(
+                    onPressed: (_secondsRemaining > 0 && !_isLoading) ? _submitSelfAttendance : null,
+                    icon: const Icon(Icons.verified_user_rounded),
+                    label: Text(
+                      _secondsRemaining == 0 ? "Challenge Expired — Tap Refresh" : "Verify & Submit Attendance",
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
               ],
