@@ -134,9 +134,14 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
           SnackBar(
             content: Text(
               msg,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+              style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14),
             ),
-            backgroundColor: const Color(0xFFC62828),
+            backgroundColor: const Color(0xFF1A2234),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: Colors.redAccent, width: 1.5),
+            ),
           ),
         );
       }
@@ -161,13 +166,14 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFC62828),
+                    color: Colors.red.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.redAccent, width: 1.5),
                   ),
                   child: Text(
                     _errorMsg,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                 ),
                 const SizedBox(height: 16),

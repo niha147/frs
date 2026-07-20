@@ -200,9 +200,14 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
           SnackBar(
             content: Text(
               msg,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+              style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14),
             ),
-            backgroundColor: const Color(0xFFC62828),
+            backgroundColor: const Color(0xFF1A2234),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: Colors.redAccent, width: 1.5),
+            ),
           ),
         );
         // Refresh challenge on error so user can retry safely
