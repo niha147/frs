@@ -13,8 +13,8 @@ class ServerUrlNotifier extends Notifier<String> {
   @override
   String build() {
     _init();
-    // Default fallback to local IP
-    return 'http://10.29.17.164:8000/api/v1';
+    // Default fallback to local API server
+    return 'http://127.0.0.1:8000/api/v1';
   }
 
   Future<void> _init() async {

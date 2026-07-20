@@ -66,13 +66,21 @@ class AuthNotifier extends Notifier<AuthState> {
       final user = await _repo.login(emailOrRoll, password, isStudent: isStudent, deviceId: deviceId);
       state = AuthState.authenticated(user);
     } catch (e) {
-      String message = "Connection error. Please try again.";
-      if (e is DioException && e.response?.data != null) {
-        try {
-          message = e.response!.data['error']['message'] as String;
-        } catch (_) {}
-      } else if (e.toString().contains("400") || e.toString().contains("401")) {
-        message = "Incorrect credentials.";
+      String message = "Connection error. Ensure backend server is running and check ⚙️ Settings.";
+      if (e is DioException) {
+        if (e.response?.data != null) {
+          final data = e.response!.data;
+          if (data is Map) {
+            if (data.containsKey('detail') && data['detail'] != null) {
+              message = data['detail'].toString();
+            } else if (data.containsKey('error') && data['error'] is Map && data['error']['message'] != null) {
+              message = data['error']['message'].toString();
+            }
+          }
+        } else {
+          final currentUrl = ref.read(serverUrlProvider);
+          message = "Cannot reach server at $currentUrl. Check ⚙️ Settings or start local backend.";
+        }
       }
       state = AuthState.error(message);
     }
