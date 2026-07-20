@@ -456,7 +456,7 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
                                       ? "denied"
                                       : (_isInsideZone ? "inside" : "outside"),
                                   isExpanded: true,
-                                  dropdownColor: Colors.black90,
+                                  dropdownColor: Colors.black87,
                                   style: const TextStyle(color: Colors.tealAccent, fontSize: 11, fontWeight: FontWeight.bold),
                                   underline: Container(),
                                   items: const [
