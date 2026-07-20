@@ -15,13 +15,23 @@ class StudentDashboard extends ConsumerWidget {
     final historyAsync = ref.watch(studentHistoryProvider);
     final student = authState.user;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1E36),
       appBar: AppBar(
         title: const Text("Student Portal", style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF1B365D),
         elevation: 0,
         actions: [
+          IconButton(
+            icon: Icon(
+              isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+              color: isDark ? Colors.amberAccent : Colors.amber.shade700,
+            ),
+            tooltip: "Toggle Light/Dark Theme",
+            onPressed: () {
+              ref.read(themeProvider.notifier).toggleTheme(!isDark);
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout_rounded),
             onPressed: () {
@@ -49,12 +59,12 @@ class StudentDashboard extends ConsumerWidget {
                     const SizedBox(height: 24),
 
                     // Attendance summary title
-                    const Text(
+                    Text(
                       "Subject-wise Attendance",
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -83,12 +93,12 @@ class StudentDashboard extends ConsumerWidget {
                     const SizedBox(height: 24),
 
                     // History Title
-                    const Text(
+                    Text(
                       "Attendance Logs",
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 12),

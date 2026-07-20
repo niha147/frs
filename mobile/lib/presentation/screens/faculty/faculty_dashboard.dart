@@ -38,6 +38,19 @@ class _FacultyDashboardState extends ConsumerState<FacultyDashboard> {
         ),
         actions: [
           IconButton(
+            icon: Icon(
+              Theme.of(context).brightness == Brightness.dark
+                  ? Icons.dark_mode_rounded
+                  : Icons.light_mode_rounded,
+              color: Theme.of(context).brightness == Brightness.dark ? Colors.amberAccent : Colors.amber.shade700,
+            ),
+            tooltip: "Toggle Light/Dark Theme",
+            onPressed: () {
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+              ref.read(themeProvider.notifier).toggleTheme(!isDark);
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.logout_rounded),
             tooltip: "Logout",
             onPressed: () => ref.read(authProvider.notifier).logout(),

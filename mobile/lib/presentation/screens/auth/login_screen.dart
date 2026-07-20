@@ -178,10 +178,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       alignment: Alignment.topRight,
                       child: Padding(
                         padding: const EdgeInsets.only(bottom: 8.0),
-                        child: IconButton(
-                          icon: const Icon(Icons.settings_suggest_rounded, color: Colors.white70, size: 28),
-                          onPressed: _showServerUrlDialog,
-                          tooltip: "API Server Settings",
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Icons.dark_mode_rounded
+                                    : Icons.light_mode_rounded,
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.amberAccent
+                                    : Colors.amber.shade700,
+                                size: 26,
+                              ),
+                              onPressed: () {
+                                final isDark = Theme.of(context).brightness == Brightness.dark;
+                                ref.read(themeProvider.notifier).toggleTheme(!isDark);
+                              },
+                              tooltip: "Toggle Light/Dark Theme",
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.settings_suggest_rounded, color: Colors.white70, size: 26),
+                              onPressed: _showServerUrlDialog,
+                              tooltip: "API Server Settings",
+                            ),
+                          ],
                         ),
                       ),
                     ),
