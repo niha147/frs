@@ -384,7 +384,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                           fontSize: 12,
                                           color: Color(0xFF1B365D),
                                           fontWeight: FontWeight.w600,
-                                          decoration: TextUnderlineStyle.solid,
+                                          decoration: TextDecoration.underline,
                                         ),
                                         overflow: TextOverflow.ellipsis,
                                       ),

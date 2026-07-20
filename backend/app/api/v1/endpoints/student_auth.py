@@ -227,6 +227,8 @@ async def get_student_me(
     return current_student
 
 
+from sqlalchemy.orm import selectinload
+
 @router.get("/attendance/summary", response_model=List[SubjectAttendanceSummary])
 async def get_student_subject_summary(
     current_student: Student = Depends(get_current_student),
@@ -238,7 +240,7 @@ async def get_student_subject_summary(
     """
     # Get all class sessions that match this student's dept/year/section
     classes_result = await db.execute(
-        select(ClassSession).join(Subject).where(
+        select(ClassSession).options(selectinload(ClassSession.subject)).where(
             ClassSession.department == current_student.department,
             ClassSession.year == current_student.year,
             ClassSession.section == current_student.section,
@@ -313,7 +315,7 @@ async def get_student_attendance_history(
     """Full class-by-class attendance history for the logged-in student."""
     # Get all classes for student's dept/year/section
     classes_result = await db.execute(
-        select(ClassSession).join(Subject).where(
+        select(ClassSession).options(selectinload(ClassSession.subject)).where(
             ClassSession.department == current_student.department,
             ClassSession.year == current_student.year,
             ClassSession.section == current_student.section,
