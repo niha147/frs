@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:smart_frs/presentation/providers/auth_provider.dart';
+import 'package:smart_frs/presentation/providers/theme_provider.dart';
 import 'package:smart_frs/presentation/providers/student_portal_provider.dart';
 
 class StudentDashboard extends ConsumerWidget {

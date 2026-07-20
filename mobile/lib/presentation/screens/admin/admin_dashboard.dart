@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_frs/presentation/providers/auth_provider.dart';
+import 'package:smart_frs/presentation/providers/theme_provider.dart';
 import 'package:smart_frs/presentation/providers/student_provider.dart';
 import 'package:smart_frs/presentation/providers/faculty_provider.dart';
 import 'package:smart_frs/presentation/providers/subject_provider.dart';
