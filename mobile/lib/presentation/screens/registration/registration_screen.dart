@@ -131,7 +131,13 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
           } catch (_) {}
         }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(
+              msg,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            backgroundColor: const Color(0xFFC62828),
+          ),
         );
       }
     } finally {
@@ -152,9 +158,18 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
               children: [
                 const Icon(Icons.camera_alt, size: 64, color: Colors.grey),
                 const SizedBox(height: 16),
-                Text(_errorMsg,
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFC62828),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _errorMsg,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.red)),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ),
                 const SizedBox(height: 16),
                 const Text(
                   'Make sure you have allowed camera permission in your browser.',

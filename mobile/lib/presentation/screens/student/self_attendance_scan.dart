@@ -197,7 +197,13 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
           } catch (_) {}
         }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(
+              msg,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            backgroundColor: const Color(0xFFC62828),
+          ),
         );
         // Refresh challenge on error so user can retry safely
         _fetchChallenge();
