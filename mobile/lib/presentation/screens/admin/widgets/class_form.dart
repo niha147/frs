@@ -19,10 +19,18 @@ class _ClassFormState extends State<ClassForm> {
   TimeOfDay _startTime = const TimeOfDay(hour: 9, minute: 0);
   TimeOfDay _endTime = const TimeOfDay(hour: 10, minute: 0);
 
+  bool _enableGeofence = false;
+  late final TextEditingController _latController;
+  late final TextEditingController _lonController;
+  late final TextEditingController _radiusController;
+
   @override
   void initState() {
     super.initState();
     _classroomController = TextEditingController(text: 'Room 301');
+    _latController = TextEditingController(text: '12.9716');
+    _lonController = TextEditingController(text: '77.5946');
+    _radiusController = TextEditingController(text: '50.0');
     if (widget.subjectList.isNotEmpty) {
       _subjectId = widget.subjectList.first.id;
     }
@@ -31,6 +39,9 @@ class _ClassFormState extends State<ClassForm> {
   @override
   void dispose() {
     _classroomController.dispose();
+    _latController.dispose();
+    _lonController.dispose();
+    _radiusController.dispose();
     super.dispose();
   }
 
@@ -99,6 +110,9 @@ class _ClassFormState extends State<ClassForm> {
         'classroom': _classroomController.text.trim(),
         'scheduled_start': startDt.toIso8601String(),
         'scheduled_end': endDt.toIso8601String(),
+        if (_enableGeofence) 'latitude': double.tryParse(_latController.text.trim()),
+        if (_enableGeofence) 'longitude': double.tryParse(_lonController.text.trim()),
+        if (_enableGeofence) 'radius_meters': double.tryParse(_radiusController.text.trim()) ?? 50.0,
       });
     }
   }
@@ -133,6 +147,44 @@ class _ClassFormState extends State<ClassForm> {
                 decoration: const InputDecoration(labelText: "Classroom / Room"),
                 validator: (v) => v == null || v.isEmpty ? "Classroom is required" : null,
               ),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text("GPS Geofencing", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                subtitle: const Text("Enforce classroom location boundary for self-scan", style: TextStyle(fontSize: 11)),
+                value: _enableGeofence,
+                onChanged: (val) => setState(() => _enableGeofence = val),
+              ),
+              if (_enableGeofence) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _latController,
+                        style: const TextStyle(color: Colors.black87),
+                        decoration: const InputDecoration(labelText: "Latitude"),
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _lonController,
+                        style: const TextStyle(color: Colors.black87),
+                        decoration: const InputDecoration(labelText: "Longitude"),
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _radiusController,
+                  style: const TextStyle(color: Colors.black87),
+                  decoration: const InputDecoration(labelText: "Radius (meters)", hintText: "50.0"),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                ),
+              ],
               const SizedBox(height: 16),
               // Pick Date Action
               ListTile(
