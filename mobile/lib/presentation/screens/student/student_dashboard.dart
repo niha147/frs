@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:smart_frs/presentation/providers/auth_provider.dart';
 import 'package:smart_frs/presentation/providers/theme_provider.dart';
+import 'package:smart_frs/presentation/widgets/theme_dialog.dart';
 import 'package:smart_frs/presentation/providers/student_portal_provider.dart';
 
 class StudentDashboard extends ConsumerWidget {
@@ -25,13 +26,11 @@ class StudentDashboard extends ConsumerWidget {
         actions: [
           IconButton(
             icon: Icon(
-              isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-              color: isDark ? Colors.amberAccent : Colors.amber.shade700,
+              Icons.palette_rounded,
+              color: isDark ? Colors.amberAccent : Colors.white,
             ),
-            tooltip: "Toggle Light/Dark Theme",
-            onPressed: () {
-              ref.read(themeProvider.notifier).toggleTheme(!isDark);
-            },
+            tooltip: "Theme & Accessibility",
+            onPressed: () => showThemeSelectorDialog(context, ref),
           ),
           IconButton(
             icon: const Icon(Icons.logout_rounded),

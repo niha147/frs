@@ -19,14 +19,14 @@ class MyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
-    final themeMode = ref.watch(themeProvider);
+    final themeState = ref.watch(themeProvider);
 
     return MaterialApp.router(
       title: 'SmartAttend AI',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: themeMode,
+      theme: AppTheme.buildTheme(Brightness.light, themeState.color),
+      darkTheme: AppTheme.buildTheme(Brightness.dark, themeState.color),
+      themeMode: themeState.mode,
       routerConfig: router,
       builder: (context, child) {
         final isWide = MediaQuery.of(context).size.width > 600;

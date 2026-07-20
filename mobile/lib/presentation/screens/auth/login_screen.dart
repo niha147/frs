@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_frs/core/network/api_client.dart';
 import 'package:smart_frs/presentation/providers/auth_provider.dart';
 import 'package:smart_frs/presentation/providers/theme_provider.dart';
+import 'package:smart_frs/presentation/widgets/theme_dialog.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -184,19 +185,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           children: [
                             IconButton(
                               icon: Icon(
-                                Theme.of(context).brightness == Brightness.dark
-                                    ? Icons.dark_mode_rounded
-                                    : Icons.light_mode_rounded,
+                                Icons.palette_rounded,
                                 color: Theme.of(context).brightness == Brightness.dark
                                     ? Colors.amberAccent
                                     : Colors.amber.shade700,
                                 size: 26,
                               ),
-                              onPressed: () {
-                                final isDark = Theme.of(context).brightness == Brightness.dark;
-                                ref.read(themeProvider.notifier).toggleTheme(!isDark);
-                              },
-                              tooltip: "Toggle Light/Dark Theme",
+                              onPressed: () => showThemeSelectorDialog(context, ref),
+                              tooltip: "Theme & Accessibility",
                             ),
                             IconButton(
                               icon: const Icon(Icons.settings_suggest_rounded, color: Colors.white70, size: 26),
