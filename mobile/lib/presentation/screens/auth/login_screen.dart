@@ -17,8 +17,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _nameController = TextEditingController();
+  final _rollController = TextEditingController();
+  final _deptController = TextEditingController(text: "Computer Science");
+  
+  bool _isSignUp = false;
   bool _obscurePassword = true;
   bool _isStudent = false;
+  int _selectedYear = 1;
+  String _selectedSection = "A";
   String? _deviceId;
 
   @override
@@ -43,18 +50,45 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _nameController.dispose();
+    _rollController.dispose();
+    _deptController.dispose();
     super.dispose();
   }
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
       FocusScope.of(context).unfocus();
-      ref.read(authProvider.notifier).login(
-            _emailController.text.trim(),
-            _passwordController.text,
-            isStudent: _isStudent,
-            deviceId: _deviceId,
-          );
+      if (!_isSignUp) {
+        // LOGIN
+        ref.read(authProvider.notifier).login(
+              _isStudent ? _rollController.text.trim() : _emailController.text.trim(),
+              _passwordController.text,
+              isStudent: _isStudent,
+              deviceId: _deviceId,
+            );
+      } else {
+        // SIGN UP / REGISTER
+        if (_isStudent) {
+          ref.read(authProvider.notifier).registerStudent(
+                rollNumber: _rollController.text.trim(),
+                name: _nameController.text.trim(),
+                email: _emailController.text.trim(),
+                department: _deptController.text.trim(),
+                year: _selectedYear,
+                section: _selectedSection,
+                password: _passwordController.text,
+                deviceId: _deviceId,
+              );
+        } else {
+          ref.read(authProvider.notifier).registerFaculty(
+                name: _nameController.text.trim(),
+                email: _emailController.text.trim(),
+                department: _deptController.text.trim(),
+                password: _passwordController.text,
+              );
+        }
+      }
     }
   }
 
@@ -123,49 +157,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (next.status == AuthStatus.error && next.errorMessage != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(next.errorMessage!),
-            backgroundColor: Theme.of(context).colorScheme.error,
+            content: Text(
+              next.errorMessage!,
+              style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            backgroundColor: const Color(0xFF1A2234),
             behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: Colors.white, width: 1.5),
+            ),
           ),
         );
       }
     });
+
+    final primaryColor = Theme.of(context).primaryColor;
 
     return Scaffold(
       body: Stack(
         children: [
           // Background Gradient background
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFF0F1E36), Color(0xFF1B365D)],
+                colors: [
+                  primaryColor.withOpacity(0.9),
+                  Theme.of(context).scaffoldBackgroundColor,
+                ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-              ),
-            ),
-          ),
-          // Glow decoration shapes
-          Positioned(
-            top: -60,
-            left: -60,
-            child: Container(
-              width: 250,
-              height: 250,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF008080).withAlpha(51),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -80,
-            right: -80,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF1B365D).withAlpha(77),
               ),
             ),
           ),
@@ -204,14 +225,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
                     Card(
-                      color: Colors.white.withAlpha(242),
+                      color: Theme.of(context).cardColor,
                       elevation: 12,
-                      shadowColor: Colors.black54,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(28),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 36.0),
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
                         child: Form(
                           key: _formKey,
                           child: Column(
@@ -219,45 +239,100 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             children: [
                               // Identity Face/Brand icon
                               Container(
-                                padding: const EdgeInsets.all(20),
+                                padding: const EdgeInsets.all(18),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF1B365D).withAlpha(20),
+                                  color: primaryColor.withOpacity(0.15),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(
+                                child: Icon(
                                   Icons.face_retouching_natural_rounded,
-                                  size: 54,
-                                  color: Color(0xFF1B365D),
+                                  size: 48,
+                                  color: primaryColor,
                                 ),
                               ),
-                              const SizedBox(height: 20),
-                              const Text(
+                              const SizedBox(height: 16),
+                              Text(
                                 "SmartAttend AI",
                                 style: TextStyle(
-                                  fontSize: 28,
+                                  fontSize: 26,
                                   fontWeight: FontWeight.w900,
-                                  color: Color(0xFF1B365D),
+                                  color: Theme.of(context).textTheme.titleLarge?.color,
                                   letterSpacing: 0.5,
                                 ),
                               ),
-                              const SizedBox(height: 6),
-                              const Text(
-                                "AI-Powered Attendance Management",
+                              const SizedBox(height: 4),
+                              Text(
+                                _isSignUp ? "Create a new account" : "AI-Powered Attendance Management",
                                 textAlign: TextAlign.center,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                   color: Colors.grey,
                                 ),
                               ),
-                              const SizedBox(height: 28),
+                              const SizedBox(height: 24),
 
-                              // Segmented Control or custom toggle tab
+                              // Sign In / Sign Up Mode Switch
                               Container(
-                                margin: const EdgeInsets.only(bottom: 24),
+                                margin: const EdgeInsets.only(bottom: 20),
                                 decoration: BoxDecoration(
-                                  color: Colors.grey.shade200,
+                                  color: Colors.grey.withOpacity(0.15),
                                   borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () => setState(() => _isSignUp = false),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(vertical: 10),
+                                          decoration: BoxDecoration(
+                                            color: !_isSignUp ? primaryColor : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              "Sign In",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color: !_isSignUp ? Colors.white : Colors.grey,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () => setState(() => _isSignUp = true),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(vertical: 10),
+                                          decoration: BoxDecoration(
+                                            color: _isSignUp ? primaryColor : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              "Sign Up",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color: _isSignUp ? Colors.white : Colors.grey,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // Role Toggle Tab (Faculty vs Student)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 20),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Row(
                                   children: [
@@ -267,20 +342,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                           setState(() {
                                             _isStudent = false;
                                             _emailController.clear();
+                                            _rollController.clear();
                                           });
                                         },
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(vertical: 12),
+                                          padding: const EdgeInsets.symmetric(vertical: 8),
                                           decoration: BoxDecoration(
-                                            color: !_isStudent ? const Color(0xFF1B365D) : Colors.transparent,
-                                            borderRadius: BorderRadius.circular(12),
+                                            color: !_isStudent ? primaryColor.withOpacity(0.8) : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(10),
                                           ),
                                           child: Center(
                                             child: Text(
                                               "Faculty / Admin",
                                               style: TextStyle(
+                                                fontSize: 12,
                                                 fontWeight: FontWeight.bold,
-                                                color: !_isStudent ? Colors.white : Colors.grey.shade700,
+                                                color: !_isStudent ? Colors.white : Colors.grey,
                                               ),
                                             ),
                                           ),
@@ -293,20 +370,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                           setState(() {
                                             _isStudent = true;
                                             _emailController.clear();
+                                            _rollController.clear();
                                           });
                                         },
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(vertical: 12),
+                                          padding: const EdgeInsets.symmetric(vertical: 8),
                                           decoration: BoxDecoration(
-                                            color: _isStudent ? const Color(0xFF1B365D) : Colors.transparent,
-                                            borderRadius: BorderRadius.circular(12),
+                                            color: _isStudent ? primaryColor.withOpacity(0.8) : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(10),
                                           ),
                                           child: Center(
                                             child: Text(
                                               "Student",
                                               style: TextStyle(
+                                                fontSize: 12,
                                                 fontWeight: FontWeight.bold,
-                                                color: _isStudent ? Colors.white : Colors.grey.shade700,
+                                                color: _isStudent ? Colors.white : Colors.grey,
                                               ),
                                             ),
                                           ),
@@ -317,42 +396,130 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                               ),
 
-                              // Input Field (Email or Roll Number)
-                              TextFormField(
-                                controller: _emailController,
-                                keyboardType: _isStudent ? TextInputType.text : TextInputType.emailAddress,
-                                textInputAction: TextInputAction.next,
-                                style: const TextStyle(color: Colors.black87),
-                                decoration: InputDecoration(
-                                  labelText: _isStudent ? "Roll Number" : "Email Address",
-                                  prefixIcon: Icon(_isStudent ? Icons.badge_outlined : Icons.email_outlined),
-                                  floatingLabelBehavior: FloatingLabelBehavior.auto,
+                              // Full Name field for Sign Up
+                              if (_isSignUp) ...[
+                                TextFormField(
+                                  controller: _nameController,
+                                  textInputAction: TextInputAction.next,
+                                  decoration: const InputDecoration(
+                                    labelText: "Full Name",
+                                    prefixIcon: Icon(Icons.person_outlined),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return "Full name is required";
+                                    }
+                                    return null;
+                                  },
                                 ),
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return _isStudent ? "Roll number is required" : "Email address is required";
-                                  }
-                                  if (!_isStudent) {
+                                const SizedBox(height: 14),
+                              ],
+
+                              // Roll Number field for Student
+                              if (_isStudent) ...[
+                                TextFormField(
+                                  controller: _rollController,
+                                  textInputAction: TextInputAction.next,
+                                  decoration: const InputDecoration(
+                                    labelText: "Roll Number (e.g. S1001)",
+                                    prefixIcon: Icon(Icons.badge_outlined),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return "Roll number is required";
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 14),
+                              ],
+
+                              // Email Address Field
+                              if (!_isStudent || _isSignUp) ...[
+                                TextFormField(
+                                  controller: _emailController,
+                                  keyboardType: TextInputType.emailAddress,
+                                  textInputAction: TextInputAction.next,
+                                  decoration: const InputDecoration(
+                                    labelText: "Email Address",
+                                    prefixIcon: Icon(Icons.email_outlined),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return "Email address is required";
+                                    }
                                     final regex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
                                     if (!regex.hasMatch(value.trim())) {
                                       return "Enter a valid email address";
                                     }
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 18),
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 14),
+                              ],
+
+                              // Additional Registration Fields (Department, Year, Section)
+                              if (_isSignUp) ...[
+                                TextFormField(
+                                  controller: _deptController,
+                                  textInputAction: TextInputAction.next,
+                                  decoration: const InputDecoration(
+                                    labelText: "Department",
+                                    prefixIcon: Icon(Icons.school_outlined),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return "Department is required";
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 14),
+                                if (_isStudent) ...[
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: DropdownButtonFormField<int>(
+                                          value: _selectedYear,
+                                          decoration: const InputDecoration(
+                                            labelText: "Year",
+                                            prefixIcon: Icon(Icons.numbers),
+                                          ),
+                                          items: [1, 2, 3, 4].map((y) {
+                                            return DropdownMenuItem(value: y, child: Text("Year $y"));
+                                          }).toList(),
+                                          onChanged: (val) => setState(() => _selectedYear = val!),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: DropdownButtonFormField<String>(
+                                          value: _selectedSection,
+                                          decoration: const InputDecoration(
+                                            labelText: "Section",
+                                            prefixIcon: Icon(Icons.class_outlined),
+                                          ),
+                                          items: ["A", "B", "C", "D"].map((sec) {
+                                            return DropdownMenuItem(value: sec, child: Text("Sec $sec"));
+                                          }).toList(),
+                                          onChanged: (val) => setState(() => _selectedSection = val!),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 14),
+                                ],
+                              ],
+
                               // Password Field
                               TextFormField(
                                 controller: _passwordController,
                                 obscureText: _obscurePassword,
                                 textInputAction: TextInputAction.done,
-                                style: const TextStyle(color: Colors.black87),
                                 onFieldSubmitted: (_) => _submit(),
                                 decoration: InputDecoration(
                                   labelText: "Password",
                                   prefixIcon: const Icon(Icons.lock_outlined),
-                                  floatingLabelBehavior: FloatingLabelBehavior.auto,
                                   suffixIcon: IconButton(
                                     icon: Icon(
                                       _obscurePassword
@@ -377,30 +544,47 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   return null;
                                 },
                               ),
-                              const SizedBox(height: 36),
+                              const SizedBox(height: 28),
+
                               // Submit / Action
                               if (authState.status == AuthStatus.loading)
                                 const Center(
-                                  child: CircularProgressIndicator(
-                                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1B365D)),
-                                  ),
+                                  child: CircularProgressIndicator(),
                                 )
                               else
                                 Column(
                                   children: [
                                     ElevatedButton(
                                       onPressed: _submit,
-                                      child: const Text("Sign In"),
+                                      child: Text(_isSignUp ? "Create Account" : "Sign In"),
                                     ),
                                     const SizedBox(height: 12),
+                                    TextButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _isSignUp = !_isSignUp;
+                                        });
+                                      },
+                                      child: Text(
+                                        _isSignUp
+                                            ? "Already have an account? Sign In"
+                                            : "Don't have an account? Sign Up",
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: primaryColor,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
                                     TextButton.icon(
                                       onPressed: _showServerUrlDialog,
-                                      icon: const Icon(Icons.dns_rounded, size: 16, color: Color(0xFF1B365D)),
+                                      icon: Icon(Icons.dns_rounded, size: 14, color: primaryColor),
                                       label: Text(
                                         "Server: ${ref.watch(serverUrlProvider)}",
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Color(0xFF1B365D),
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: primaryColor,
                                           fontWeight: FontWeight.w600,
                                           decoration: TextDecoration.underline,
                                         ),
@@ -414,7 +598,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
                     Text(
                       _isStudent && _deviceId != null 
                           ? "Device Bound: ${_deviceId!.substring(0, 14)}..."

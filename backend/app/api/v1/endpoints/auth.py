@@ -8,10 +8,54 @@ from app.api import deps
 from app.core import security
 from app.core.config import settings
 from app.models.faculty import Faculty
+from pydantic import BaseModel, EmailStr
 from app.schemas.auth import LoginRequest, Token, RefreshRequest
 from app.schemas.faculty import FacultyOut
 
 router = APIRouter()
+
+class FacultyRegisterRequest(BaseModel):
+    name: str
+    email: EmailStr
+    department: str
+    password: str
+
+@router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
+async def faculty_register(
+    reg_data: FacultyRegisterRequest,
+    db: AsyncSession = Depends(deps.get_db)
+) -> Token:
+    """Public Faculty Registration."""
+    email = reg_data.email.strip().lower()
+    existing = await db.execute(
+        select(Faculty).where(Faculty.email == email)
+    )
+    if existing.scalars().first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Faculty account with this email address already exists.",
+        )
+
+    new_faculty = Faculty(
+        name=reg_data.name.strip(),
+        email=email,
+        department=reg_data.department.strip(),
+        role="faculty",
+        password_hash=security.get_password_hash(reg_data.password),
+        is_active=True,
+    )
+    db.add(new_faculty)
+    await db.commit()
+    await db.refresh(new_faculty)
+
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    refresh_token_expires = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+
+    return Token(
+        access_token=security.create_access_token(new_faculty.id, expires_delta=access_token_expires),
+        refresh_token=security.create_refresh_token(new_faculty.id, expires_delta=refresh_token_expires),
+        token_type="bearer"
+    )
 
 async def authenticate_user(db: AsyncSession, email: str, password: str) -> Faculty:
     """Helper method to find and verify user credentials."""

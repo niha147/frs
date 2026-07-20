@@ -29,8 +29,20 @@ router = APIRouter()
 
 # --- Request / Response Schemas ---
 
+from pydantic import BaseModel, EmailStr
+
 class StudentLoginRequest(BaseModel):
     roll_number: str
+    password: str
+    device_id: Optional[str] = None
+
+class StudentRegisterRequest(BaseModel):
+    roll_number: str
+    name: str
+    email: EmailStr
+    department: str
+    year: int = 1
+    section: str = "A"
     password: str
     device_id: Optional[str] = None
 
@@ -108,6 +120,58 @@ async def get_current_student(
     return student
 
 # --- Endpoints ---
+
+@router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
+async def student_register(
+    reg_data: StudentRegisterRequest,
+    db: AsyncSession = Depends(get_db)
+) -> Token:
+    """Public Student Registration."""
+    roll = reg_data.roll_number.strip().upper()
+    existing_roll = await db.execute(
+        select(Student).where(Student.roll_number == roll)
+    )
+    if existing_roll.scalars().first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Student with this Roll Number is already registered.",
+        )
+
+    email = reg_data.email.strip().lower()
+    existing_email = await db.execute(
+        select(Student).where(Student.email == email)
+    )
+    if existing_email.scalars().first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Student with this Email Address is already registered.",
+        )
+
+    new_student = Student(
+        roll_number=roll,
+        name=reg_data.name.strip(),
+        email=email,
+        department=reg_data.department.strip(),
+        year=reg_data.year,
+        section=reg_data.section.strip().upper(),
+        password_hash=security.get_password_hash(reg_data.password),
+        device_id=reg_data.device_id,
+        is_active=True,
+    )
+    db.add(new_student)
+    await db.commit()
+    await db.refresh(new_student)
+
+    access_token = security.create_access_token(
+        new_student.id,
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    refresh_token = security.create_refresh_token(
+        new_student.id,
+        expires_delta=timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    )
+    return Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
+
 
 @router.post("/login", response_model=Token)
 async def student_login(

@@ -66,24 +66,76 @@ class AuthNotifier extends Notifier<AuthState> {
       final user = await _repo.login(emailOrRoll, password, isStudent: isStudent, deviceId: deviceId);
       state = AuthState.authenticated(user);
     } catch (e) {
-      String message = "Connection error. Ensure backend server is running and check ⚙️ Settings.";
-      if (e is DioException) {
-        if (e.response?.data != null) {
-          final data = e.response!.data;
-          if (data is Map) {
-            if (data.containsKey('detail') && data['detail'] != null) {
-              message = data['detail'].toString();
-            } else if (data.containsKey('error') && data['error'] is Map && data['error']['message'] != null) {
-              message = data['error']['message'].toString();
-            }
-          }
-        } else {
-          final currentUrl = ref.read(serverUrlProvider);
-          message = "Cannot reach server at $currentUrl. Check ⚙️ Settings or start local backend.";
-        }
-      }
-      state = AuthState.error(message);
+      _handleAuthError(e);
     }
+  }
+
+  Future<void> registerStudent({
+    required String rollNumber,
+    required String name,
+    required String email,
+    required String department,
+    required int year,
+    required String section,
+    required String password,
+    String? deviceId,
+  }) async {
+    state = AuthState.loading();
+    try {
+      final user = await _repo.registerStudent(
+        rollNumber: rollNumber,
+        name: name,
+        email: email,
+        department: department,
+        year: year,
+        section: section,
+        password: password,
+        deviceId: deviceId,
+      );
+      state = AuthState.authenticated(user);
+    } catch (e) {
+      _handleAuthError(e);
+    }
+  }
+
+  Future<void> registerFaculty({
+    required String name,
+    required String email,
+    required String department,
+    required String password,
+  }) async {
+    state = AuthState.loading();
+    try {
+      final user = await _repo.registerFaculty(
+        name: name,
+        email: email,
+        department: department,
+        password: password,
+      );
+      state = AuthState.authenticated(user);
+    } catch (e) {
+      _handleAuthError(e);
+    }
+  }
+
+  void _handleAuthError(dynamic e) {
+    String message = "Connection error. Ensure backend server is running and check ⚙️ Settings.";
+    if (e is DioException) {
+      if (e.response?.data != null) {
+        final data = e.response!.data;
+        if (data is Map) {
+          if (data.containsKey('detail') && data['detail'] != null) {
+            message = data['detail'].toString();
+          } else if (data.containsKey('error') && data['error'] is Map && data['error']['message'] != null) {
+            message = data['error']['message'].toString();
+          }
+        }
+      } else {
+        final currentUrl = ref.read(serverUrlProvider);
+        message = "Cannot reach server at $currentUrl. Check ⚙️ Settings or start local backend.";
+      }
+    }
+    state = AuthState.error(message);
   }
 
   Future<void> logout() async {

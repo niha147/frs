@@ -37,6 +37,62 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<UserProfile> registerStudent({
+    required String rollNumber,
+    required String name,
+    required String email,
+    required String department,
+    required int year,
+    required String section,
+    required String password,
+    String? deviceId,
+  }) async {
+    final response = await _dio.post('/student-auth/register', data: {
+      'roll_number': rollNumber,
+      'name': name,
+      'email': email,
+      'department': department,
+      'year': year,
+      'section': section,
+      'password': password,
+      if (deviceId != null) 'device_id': deviceId,
+    });
+
+    final accessToken = response.data['access_token'] as String;
+    final refreshToken = response.data['refresh_token'] as String;
+
+    await _storage.saveAccessToken(accessToken);
+    await _storage.saveRefreshToken(refreshToken);
+    await _storage.saveUserRole('student');
+
+    return await getMe(isStudent: true);
+  }
+
+  @override
+  Future<UserProfile> registerFaculty({
+    required String name,
+    required String email,
+    required String department,
+    required String password,
+  }) async {
+    final response = await _dio.post('/auth/register', data: {
+      'name': name,
+      'email': email,
+      'department': department,
+      'password': password,
+    });
+
+    final accessToken = response.data['access_token'] as String;
+    final refreshToken = response.data['refresh_token'] as String;
+
+    await _storage.saveAccessToken(accessToken);
+    await _storage.saveRefreshToken(refreshToken);
+    await _storage.saveUserRole('faculty');
+
+    return await getMe(isStudent: false);
+  }
+
+  @override
   Future<UserProfile> getMe({bool isStudent = false}) async {
     bool studentMode = isStudent;
     if (!isStudent) {
