@@ -29,13 +29,26 @@ class MyApp extends ConsumerWidget {
       themeMode: themeState.mode,
       routerConfig: router,
       builder: (context, child) {
+        final activeTheme = (themeState.mode == ThemeMode.light)
+            ? AppTheme.buildTheme(Brightness.light, themeState.color)
+            : AppTheme.buildTheme(Brightness.dark, themeState.color);
+
+        final animatedChild = AnimatedTheme(
+          data: activeTheme,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOutCubic,
+          child: child!,
+        );
+
         final isWide = MediaQuery.of(context).size.width > 600;
-        if (!isWide) return child!;
+        if (!isWide) return animatedChild;
         
         return Material(
           type: MaterialType.transparency,
-          child: Container(
-            color: const Color(0xFF0F1E36),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOutCubic,
+            color: activeTheme.scaffoldBackgroundColor,
             child: Center(
               child: Card(
                 elevation: 12,
@@ -44,7 +57,7 @@ class MyApp extends ConsumerWidget {
                 clipBehavior: Clip.antiAlias,
                 child: SizedBox(
                   width: 450,
-                  child: child,
+                  child: animatedChild,
                 ),
               ),
             ),
