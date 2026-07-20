@@ -6,12 +6,12 @@ class StudentRepository {
   StudentRepository(this._dio);
 
   Future<List<StudentModel>> getStudents() async {
-    final response = await _dio.get('/students');
+    final response = await _dio.get('/students/');
     return (response.data as List).map((x) => StudentModel.fromJson(x)).toList();
   }
 
   Future<StudentModel> createStudent(Map<String, dynamic> data) async {
-    final response = await _dio.post('/students', data: data);
+    final response = await _dio.post('/students/', data: data);
     return StudentModel.fromJson(response.data);
   }
 

@@ -9,7 +9,7 @@ final subjectRepositoryProvider = Provider<SubjectRepository>((ref) {
 });
 
 class SubjectListNotifier extends AsyncNotifier<List<SubjectModel>> {
-  late final SubjectRepository _repo;
+  late SubjectRepository _repo;
 
   @override
   Future<List<SubjectModel>> build() async {

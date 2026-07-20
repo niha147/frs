@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -20,22 +21,23 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
   bool _isInit = false;
   bool _isLoading = false;
   String _errorMsg = '';
-  int _currentStep = 0;
-  
-  // Geofence simulation settings for testing on emulator/device
-  bool _simulateInsideGeofence = true; 
 
-  final List<String> _guidedPrompts = [
-    'Look straight into the camera',
-    'Blink your eyes twice',
-    'Smile for liveness verification',
-    'Hold steady. Capturing face...',
-  ];
+  // Dynamic Challenge state
+  String? _challengeId;
+  String? _challengeType;
+  String _instruction = 'Requesting live challenge...';
+  int _secondsRemaining = 30;
+  Timer? _timer;
+  bool _challengeExpired = false;
+
+  // Geofence simulation settings for testing on emulator/device
+  bool _simulateInsideGeofence = true;
 
   @override
   void initState() {
     super.initState();
     _initializeCamera();
+    _fetchChallenge();
   }
 
   Future<void> _initializeCamera() async {
@@ -46,7 +48,6 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
         return;
       }
       
-      // Select front-facing camera
       final frontCamera = _cameras.firstWhere(
         (c) => c.lensDirection == CameraLensDirection.front,
         orElse: () => _cameras.first,
@@ -69,22 +70,81 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
     }
   }
 
+  Future<void> _fetchChallenge() async {
+    _timer?.cancel();
+    setState(() {
+      _challengeExpired = false;
+      _instruction = "Fetching live liveness challenge...";
+      _secondsRemaining = 30;
+    });
+
+    try {
+      final dio = ref.read(dioProvider);
+      final response = await dio.post(
+        '/attendance/challenge',
+        data: FormData.fromMap({'class_id': widget.classId}),
+      );
+
+      if (response.statusCode == 200 && mounted) {
+        final data = response.data;
+        setState(() {
+          _challengeId = data['challenge_id'];
+          _challengeType = data['challenge_type'];
+          _instruction = data['instruction'] ?? 'Perform requested face action';
+          _secondsRemaining = data['expires_in_seconds'] ?? 30;
+        });
+
+        _startTimer();
+      }
+    } catch (e) {
+      if (mounted) {
+        String msg = "Could not fetch liveness challenge.";
+        if (e is DioException && e.response?.data != null) {
+          try {
+            msg = e.response!.data['detail'] ?? e.response!.data['error']['message'];
+          } catch (_) {}
+        }
+        setState(() {
+          _instruction = "Challenge Error: $msg";
+          _challengeExpired = true;
+        });
+      }
+    }
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_secondsRemaining > 1) {
+        setState(() => _secondsRemaining--);
+      } else {
+        timer.cancel();
+        setState(() {
+          _secondsRemaining = 0;
+          _challengeExpired = true;
+          _instruction = "Challenge expired. Tap refresh to get a new challenge.";
+        });
+      }
+    });
+  }
+
   @override
   void dispose() {
+    _timer?.cancel();
     _controller?.dispose();
     super.dispose();
   }
 
-  Future<void> _nextGuidedStep() async {
-    if (_currentStep < _guidedPrompts.length - 1) {
-      setState(() => _currentStep++);
-    } else {
-      await _submitSelfAttendance();
-    }
-  }
-
   Future<void> _submitSelfAttendance() async {
     if (_controller == null || !_controller!.value.isInitialized) return;
+    if (_challengeId == null || _challengeExpired) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Liveness challenge has expired. Please refresh the challenge."),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -92,12 +152,9 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
       final XFile pictureFile = await _controller!.takePicture();
       final bytes = await pictureFile.readAsBytes();
 
-      // Retrieve device signature
       final prefs = await SharedPreferences.getInstance();
       final deviceId = prefs.getString('simulated_device_id') ?? 'unknown_device_id';
 
-      // Mock coordinates matching the backend geofence test:
-      // Valid coordinates match the class coordinate; invalid coordinates are set outside the 50m radius.
       final double lat = _simulateInsideGeofence ? 12.9716 : 12.9850;
       final double lon = _simulateInsideGeofence ? 77.5946 : 77.6100;
 
@@ -106,6 +163,11 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
         'latitude': lat,
         'longitude': lon,
         'device_id': deviceId,
+        'challenge_id': _challengeId,
+        'blink_simulated': _challengeType == 'blink',
+        'yaw_simulated': _challengeType == 'turn_left_right',
+        'smile_simulated': _challengeType == 'smile',
+        'pitch_simulated': _challengeType == 'look_up_down',
         'file': MultipartFile.fromBytes(
           bytes,
           filename: 'selfie.jpg',
@@ -118,7 +180,7 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
       if (response.statusCode == 200 && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Attendance recorded successfully via Selfie Scan!"),
+            content: Text("Attendance & Real-Time Liveness Verified!"),
             backgroundColor: Colors.green,
           ),
         );
@@ -137,13 +199,12 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(msg), backgroundColor: Colors.red),
         );
+        // Refresh challenge on error so user can retry safely
+        _fetchChallenge();
       }
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _currentStep = 0;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -167,9 +228,16 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text("Verify Presence"),
+        title: const Text("Challenge Verification"),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _fetchChallenge,
+            tooltip: "Refresh Challenge",
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(
@@ -179,7 +247,7 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
                   CircularProgressIndicator(color: Colors.teal),
                   SizedBox(height: 16),
                   Text(
-                    "Validating face profile & geofence location...",
+                    "Verifying real-time liveness & geofence...",
                     style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                 ],
@@ -187,15 +255,12 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
             )
           : Stack(
               children: [
-                // Live camera preview
                 Positioned.fill(
                   child: AspectRatio(
                     aspectRatio: _controller!.value.aspectRatio,
                     child: CameraPreview(_controller!),
                   ),
                 ),
-                
-                // Face Oval framing overlay
                 Positioned.fill(
                   child: Center(
                     child: Container(
@@ -203,18 +268,16 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
                       height: 340,
                       decoration: BoxDecoration(
                         border: Border.all(
-                          color: Colors.teal.withAlpha(200),
+                          color: _challengeExpired ? Colors.red : Colors.teal.withAlpha(200),
                           width: 4,
                         ),
-                        borderRadius: BorderRadius.all(
+                        borderRadius: const BorderRadius.all(
                           Radius.elliptical(130, 170),
                         ),
                       ),
                     ),
                   ),
                 ),
-
-                // Liveness guide instruction card
                 Positioned(
                   top: 20,
                   left: 16,
@@ -226,28 +289,45 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
                       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                       child: Row(
                         children: [
-                          const Icon(Icons.info_outline, color: Colors.teal, size: 24),
+                          Icon(
+                            _challengeExpired ? Icons.warning_amber_rounded : Icons.security,
+                            color: _challengeExpired ? Colors.amber : Colors.tealAccent,
+                            size: 28,
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  "LIVENESS INSTRUCTION",
-                                  style: TextStyle(
-                                    color: Colors.teal,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 1.2,
-                                  ),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      "REAL-TIME CHALLENGE",
+                                      style: TextStyle(
+                                        color: Colors.tealAccent,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 1.2,
+                                      ),
+                                    ),
+                                    Text(
+                                      "${_secondsRemaining}s",
+                                      style: TextStyle(
+                                        color: _secondsRemaining < 10 ? Colors.redAccent : Colors.white70,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  _guidedPrompts[_currentStep],
+                                  _instruction,
                                   style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ],
@@ -258,8 +338,6 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
                     ),
                   ),
                 ),
-
-                // Mock location toggle for testing geofencing
                 Positioned(
                   bottom: 120,
                   left: 20,
@@ -304,22 +382,32 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
                     ),
                   ),
                 ),
-
-                // Execution/Verification Step Action Button
                 Positioned(
                   bottom: 30,
                   left: 0,
                   right: 0,
                   child: Center(
-                    child: FloatingActionButton.large(
-                      onPressed: _nextGuidedStep,
-                      backgroundColor: Colors.teal,
-                      foregroundColor: Colors.white,
-                      child: Text(
-                        _currentStep == _guidedPrompts.length - 1 ? "Scan" : "Next",
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
+                    child: _challengeExpired
+                        ? ElevatedButton.icon(
+                            onPressed: _fetchChallenge,
+                            icon: const Icon(Icons.refresh),
+                            label: const Text("Get New Challenge"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.amber.shade700,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                          )
+                        : FloatingActionButton.large(
+                            onPressed: _submitSelfAttendance,
+                            backgroundColor: Colors.teal,
+                            foregroundColor: Colors.white,
+                            child: const Text(
+                              "Submit",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
                   ),
                 ),
               ],

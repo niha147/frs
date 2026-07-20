@@ -12,7 +12,7 @@ from app.models.faculty import Faculty
 
 # Config OAuth2 Bearer scheme matching the login endpoint
 oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/auth/login"
+    tokenUrl=f"{settings.API_V1_STR}/auth/login/access-token"
 )
 
 async def get_current_user(

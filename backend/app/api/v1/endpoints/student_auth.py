@@ -23,7 +23,7 @@ from app.models.class_session import ClassSession
 from app.models.subject import Subject
 from app.schemas.auth import Token
 from pydantic import BaseModel
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 router = APIRouter()
 
@@ -74,7 +74,7 @@ class AttendanceHistoryItem(BaseModel):
 # --- Helpers ---
 
 student_oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/student-auth/login",
+    tokenUrl=f"{settings.API_V1_STR}/student-auth/login/access-token",
     scheme_name="StudentOAuth2"
 )
 
@@ -148,6 +148,44 @@ async def student_login(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Device binding mismatch. This account is registered on another device. Contact admin to reset.",
             )
+
+    access_token = security.create_access_token(
+        student.id,
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    refresh_token = security.create_refresh_token(
+        student.id,
+        expires_delta=timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    )
+    return Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
+
+
+@router.post("/login/access-token", response_model=Token)
+async def student_login_form(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: AsyncSession = Depends(get_db)
+) -> Token:
+    """Student login using roll number + password (form-data for Swagger UI)."""
+    result = await db.execute(
+        select(Student).where(Student.roll_number == form_data.username)
+    )
+    student = result.scalars().first()
+
+    if not student or not student.password_hash:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid roll number or password not set. Contact admin.",
+        )
+    if not security.verify_password(form_data.password, student.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect password.",
+        )
+    if not student.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Student account is inactive.",
+        )
 
     access_token = security.create_access_token(
         student.id,

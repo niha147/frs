@@ -8,7 +8,7 @@ final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
 });
 
 class NotificationNotifier extends AsyncNotifier<List<NotificationModel>> {
-  late final NotificationRepository _repo;
+  late NotificationRepository _repo;
 
   @override
   Future<List<NotificationModel>> build() async {

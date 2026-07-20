@@ -28,9 +28,16 @@ class ServerUrlNotifier extends Notifier<String> {
   }
 
   Future<void> setUrl(String url) async {
-    state = url;
+    var sanitizedUrl = url.trim();
+    if (sanitizedUrl.endsWith('/')) {
+      sanitizedUrl = sanitizedUrl.substring(0, sanitizedUrl.length - 1);
+    }
+    if (!sanitizedUrl.endsWith('/api/v1')) {
+      sanitizedUrl = '$sanitizedUrl/api/v1';
+    }
+    state = sanitizedUrl;
     if (_prefs != null) {
-      await _prefs!.setString(_key, url);
+      await _prefs!.setString(_key, sanitizedUrl);
     }
   }
 }

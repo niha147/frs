@@ -6,12 +6,12 @@ class FacultyRepository {
   FacultyRepository(this._dio);
 
   Future<List<FacultyModel>> getFaculty() async {
-    final response = await _dio.get('/faculty');
+    final response = await _dio.get('/faculty/');
     return (response.data as List).map((x) => FacultyModel.fromJson(x)).toList();
   }
 
   Future<FacultyModel> createFaculty(Map<String, dynamic> data) async {
-    final response = await _dio.post('/faculty', data: data);
+    final response = await _dio.post('/faculty/', data: data);
     return FacultyModel.fromJson(response.data);
   }
 

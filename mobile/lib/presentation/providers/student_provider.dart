@@ -9,7 +9,7 @@ final studentRepositoryProvider = Provider<StudentRepository>((ref) {
 });
 
 class StudentListNotifier extends AsyncNotifier<List<StudentModel>> {
-  late final StudentRepository _repo;
+  late StudentRepository _repo;
 
   @override
   Future<List<StudentModel>> build() async {

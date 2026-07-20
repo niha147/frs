@@ -6,12 +6,12 @@ class SubjectRepository {
   SubjectRepository(this._dio);
 
   Future<List<SubjectModel>> getSubjects() async {
-    final response = await _dio.get('/subjects');
+    final response = await _dio.get('/subjects/');
     return (response.data as List).map((x) => SubjectModel.fromJson(x)).toList();
   }
 
   Future<SubjectModel> createSubject(Map<String, dynamic> data) async {
-    final response = await _dio.post('/subjects', data: data);
+    final response = await _dio.post('/subjects/', data: data);
     return SubjectModel.fromJson(response.data);
   }
 

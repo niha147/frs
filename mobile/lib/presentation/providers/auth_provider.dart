@@ -33,8 +33,8 @@ class AuthState {
 }
 
 class AuthNotifier extends Notifier<AuthState> {
-  late final AuthRepository _repo;
-  late final SecureStorage _storage;
+  late AuthRepository _repo;
+  late SecureStorage _storage;
 
   @override
   AuthState build() {

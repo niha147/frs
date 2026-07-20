@@ -9,7 +9,7 @@ final classRepositoryProvider = Provider<ClassRepository>((ref) {
 });
 
 class ClassListNotifier extends AsyncNotifier<List<ClassSessionModel>> {
-  late final ClassRepository _repo;
+  late ClassRepository _repo;
 
   @override
   Future<List<ClassSessionModel>> build() async {

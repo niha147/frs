@@ -16,8 +16,13 @@ from app.core.scheduler import start_scheduler, shutdown_scheduler
 
 from sqlalchemy import text
 
+from datetime import datetime, timedelta
+from app.models.student import Student
+from app.models.subject import Subject
+from app.models.class_session import ClassSession
+
 async def seed_default_admin() -> None:
-    """Seeds a default system admin account if none exists in the database."""
+    """Seeds default admin, faculty, students, subject, and active class session if none exist."""
     async with AsyncSessionLocal() as session:
         try:
             # Ensure composite index on attendance is created
@@ -31,7 +36,7 @@ async def seed_default_admin() -> None:
             
             if not admin_user:
                 logger.info("No admin user found. Seeding default administrator account...")
-                default_admin = Faculty(
+                admin_user = Faculty(
                     id=uuid.uuid4(),
                     name="System Admin",
                     email="admin@smartattend.com",
@@ -41,14 +46,101 @@ async def seed_default_admin() -> None:
                     role="admin",
                     is_active=True
                 )
-                session.add(default_admin)
+                session.add(admin_user)
                 await session.commit()
                 logger.info("Default admin seeded: admin@smartattend.com / admin123")
-            else:
-                logger.info("Admin accounts already exist. Skipping seeding.")
+
+            # Query if faculty exists
+            fac_query = select(Faculty).where(Faculty.email == "faculty@smartattend.com")
+            fac_res = await session.execute(fac_query)
+            faculty_user = fac_res.scalars().first()
+            if not faculty_user:
+                faculty_user = Faculty(
+                    id=uuid.uuid4(),
+                    name="Prof. Alan Turing",
+                    email="faculty@smartattend.com",
+                    phone="9876543210",
+                    department="Computer Science",
+                    password_hash=get_password_hash("faculty123"),
+                    role="faculty",
+                    is_active=True
+                )
+                session.add(faculty_user)
+                await session.commit()
+                logger.info("Default faculty seeded: faculty@smartattend.com / faculty123")
+
+            # Seed default students
+            s1_query = select(Student).where(Student.roll_number == "S1001")
+            s1_res = await session.execute(s1_query)
+            if not s1_res.scalars().first():
+                s1 = Student(
+                    id=uuid.uuid4(),
+                    roll_number="S1001",
+                    name="John Doe",
+                    department="Computer Science",
+                    year=1,
+                    section="A",
+                    email="john.doe@student.edu",
+                    password_hash=get_password_hash("student123"),
+                    is_active=True
+                )
+                s2 = Student(
+                    id=uuid.uuid4(),
+                    roll_number="S1002",
+                    name="Alice Smith",
+                    department="Computer Science",
+                    year=1,
+                    section="A",
+                    email="alice.smith@student.edu",
+                    password_hash=get_password_hash("student123"),
+                    is_active=True
+                )
+                session.add_all([s1, s2])
+                await session.commit()
+                logger.info("Default students seeded: S1001 / student123 and S1002 / student123")
+
+            # Seed default subject
+            subj_query = select(Subject).where(Subject.code == "CS101")
+            subj_res = await session.execute(subj_query)
+            subj = subj_res.scalars().first()
+            if not subj:
+                subj = Subject(
+                    name="Computer Science Fundamentals",
+                    code="CS101",
+                    department="Computer Science",
+                    year=1,
+                    section="A",
+                    credits=4,
+                    faculty_id=faculty_user.id
+                )
+                session.add(subj)
+                await session.commit()
+                logger.info("Default subject CS101 seeded.")
+
+            # Seed active class session for today if none active
+            now = datetime.now()
+            start_time = now - timedelta(hours=2)
+            end_time = now + timedelta(hours=6)
+            cls_query = select(ClassSession).where(ClassSession.subject_id == subj.id)
+            cls_res = await session.execute(cls_query)
+            if not cls_res.scalars().first():
+                cls_session = ClassSession(
+                    subject_id=subj.id,
+                    faculty_id=faculty_user.id,
+                    department="Computer Science",
+                    year=1,
+                    section="A",
+                    scheduled_start=start_time,
+                    scheduled_end=end_time,
+                    classroom="Lab 301"
+                )
+                session.add(cls_session)
+                await session.commit()
+                logger.info(f"Default active class session seeded (ID: {cls_session.id}).")
+
         except Exception as e:
             logger.warning(
-                f"Could not connect to database to verify/seed default admin user (Database might be offline): {str(e)}"
+                f"Could not connect to database to verify/seed default data: {str(e)}"
             )
 
 @asynccontextmanager
@@ -77,7 +169,7 @@ from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
