@@ -153,7 +153,7 @@ class ThemeSelectorDialog extends ConsumerWidget {
       ),
       actions: [
         ElevatedButton(
-          onPressed: () => Navigator.of(ctx).pop(),
+          onPressed: () => Navigator.of(context).pop(),
           child: const Text("Done"),
         ),
       ],
