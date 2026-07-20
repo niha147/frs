@@ -140,7 +140,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: Colors.redAccent, width: 1.5),
+              side: const BorderSide(color: Colors.white, width: 1.5),
             ),
           ),
         );
@@ -168,7 +168,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                   decoration: BoxDecoration(
                     color: Colors.red.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.redAccent, width: 1.5),
+                    border: Border.all(color: Colors.white, width: 1.5),
                   ),
                   child: Text(
                     _errorMsg,

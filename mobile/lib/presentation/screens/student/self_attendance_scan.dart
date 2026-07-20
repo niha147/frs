@@ -206,7 +206,7 @@ class _SelfAttendanceScanScreenState extends ConsumerState<SelfAttendanceScanScr
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: Colors.redAccent, width: 1.5),
+              side: const BorderSide(color: Colors.white, width: 1.5),
             ),
           ),
         );
