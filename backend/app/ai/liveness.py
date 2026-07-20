@@ -18,17 +18,24 @@ class LivenessService:
     
     def __init__(self):
         self.mp_face_mesh = None
+        self.use_tasks_api = False
         if MEDIAPIPE_AVAILABLE:
             try:
-                self.mp_face_mesh = mp.solutions.face_mesh.FaceMesh(
-                    static_image_mode=True,
-                    max_num_faces=1,
-                    refine_landmarks=True,
-                    min_detection_confidence=0.5
-                )
-                logger.info("MediaPipe Face Mesh initialized successfully.")
+                if hasattr(mp, 'solutions') and hasattr(mp.solutions, 'face_mesh'):
+                    self.mp_face_mesh = mp.solutions.face_mesh.FaceMesh(
+                        static_image_mode=True,
+                        max_num_faces=1,
+                        refine_landmarks=True,
+                        min_detection_confidence=0.5
+                    )
+                    logger.info("MediaPipe Face Mesh (Solutions API) initialized successfully.")
+                else:
+                    from mediapipe.tasks import python as mp_tasks
+                    from mediapipe.tasks.python import vision as mp_vision
+                    self.use_tasks_api = True
+                    logger.info("MediaPipe Tasks API (v0.10.35+) detected & initialized successfully.")
             except Exception as e:
-                logger.error(f"Failed to initialize MediaPipe Face Mesh: {str(e)}. Using simulation.")
+                logger.error(f"Failed to initialize MediaPipe Face Mesh: {str(e)}. Using simulation fallback.")
                 self.mp_face_mesh = None
 
     def verify_liveness(
