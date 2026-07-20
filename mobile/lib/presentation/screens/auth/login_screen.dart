@@ -368,9 +368,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   ),
                                 )
                               else
-                                ElevatedButton(
-                                  onPressed: _submit,
-                                  child: const Text("Sign In"),
+                                Column(
+                                  children: [
+                                    ElevatedButton(
+                                      onPressed: _submit,
+                                      child: const Text("Sign In"),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    TextButton.icon(
+                                      onPressed: _showServerUrlDialog,
+                                      icon: const Icon(Icons.dns_rounded, size: 16, color: Color(0xFF1B365D)),
+                                      label: Text(
+                                        "Server: ${ref.watch(serverUrlProvider)}",
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF1B365D),
+                                          fontWeight: FontWeight.w600,
+                                          decoration: TextUnderlineStyle.solid,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                             ],
                           ),
