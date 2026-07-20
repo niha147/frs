@@ -138,16 +138,11 @@ async def student_login(
 
     # Validate/Bind Device ID
     if login_data.device_id:
-        if not student.device_id:
-            # Bind device ID on first login
+        if student.device_id != login_data.device_id:
+            # Rebind device ID on student login
             student.device_id = login_data.device_id
             db.add(student)
             await db.commit()
-        elif student.device_id != login_data.device_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Device binding mismatch. This account is registered on another device. Contact admin to reset.",
-            )
 
     access_token = security.create_access_token(
         student.id,

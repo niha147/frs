@@ -8,17 +8,25 @@ except ImportError:
     OPENCV_AVAILABLE = False
     logger.warning("OpenCV is not available. Image processing will run in Simulation Mode.")
 
+import io
+from PIL import Image
+
 def decode_image(image_bytes: bytes) -> np.ndarray:
-    """Decodes raw image byte streams into an OpenCV BGR image matrix."""
-    if not OPENCV_AVAILABLE:
-        # Return a simulated empty image matrix (numpy array)
-        return np.zeros((480, 640, 3), dtype=np.uint8)
-        
-    nparr = np.frombuffer(image_bytes, np.uint8)
-    image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    if image is None:
-        raise ValueError("Failed to decode image bytes: Invalid image format.")
-    return image
+    """Decodes raw image byte streams into a BGR image matrix using OpenCV or PIL."""
+    if OPENCV_AVAILABLE:
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if image is not None:
+            return image
+            
+    try:
+        pil_image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+        # Convert RGB to BGR numpy array
+        rgb_array = np.array(pil_image)
+        bgr_array = rgb_array[:, :, ::-1].copy()
+        return bgr_array
+    except Exception as e:
+        raise ValueError(f"Failed to decode image bytes: {str(e)}")
 
 def draw_face_box(image: np.ndarray, bbox: list, label: str) -> np.ndarray:
     """Draws a rectangular overlay and a name/confidence label on the image."""

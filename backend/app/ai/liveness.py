@@ -132,6 +132,13 @@ class LivenessService:
                 logger.warning(f"Error during native MediaPipe liveness check: {str(e)}. Using simulation.")
         
         # --- SIMULATION FALLBACK ---
+        # Validate that the frame contains a non-empty, non-dark image
+        if image_matrix is not None and hasattr(image_matrix, "size") and image_matrix.size > 0:
+            mean_val = float(image_matrix.mean())
+            std_val = float(image_matrix.std())
+            if mean_val < 12.0 or std_val < 4.0:
+                return False, "No face detected in the frame. The camera image is too dark, covered, or empty."
+
         if challenge_type == "blink":
             if not blink_simulated:
                 return False, "Liveness check failed: Eye blink not detected (Simulated)."
