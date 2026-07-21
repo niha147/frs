@@ -17,3 +17,11 @@ numpy>=1.24.0
 reportlab>=4.0.0
 openpyxl>=3.1.0
 
+# Real face recognition (replaces simulation-mode fallback in app/ai/face_embedding.py)
+insightface>=0.7.3
+onnxruntime>=1.16.0
+
+# Real liveness / anti-spoofing detection (replaces simulation-mode fallback in app/ai/liveness.py)
+mediapipe>=0.10.9
+opencv-python-headless>=4.8.0
+
