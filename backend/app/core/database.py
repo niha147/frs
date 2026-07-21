@@ -1,11 +1,16 @@
+import uuid
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from app.core.config import settings
+
+def _unique_stmt_name(*args, **kwargs) -> str:
+    return f"__asyncpg_stmt_{uuid.uuid4().hex}__"
 
 connect_args = {}
 if "postgresql" in settings.DATABASE_URL or "asyncpg" in settings.DATABASE_URL:
     connect_args["statement_cache_size"] = 0
     connect_args["prepared_statement_cache_size"] = 0
+    connect_args["prepared_statement_name_func"] = _unique_stmt_name
 
 # Create async database engine
 engine = create_async_engine(
@@ -13,6 +18,7 @@ engine = create_async_engine(
     echo=False,
     future=True,
     connect_args=connect_args,
+    execution_options={"compiled_cache": None},
     pool_pre_ping=True,
     pool_recycle=300
 )

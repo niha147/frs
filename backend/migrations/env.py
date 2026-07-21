@@ -65,6 +65,11 @@ def do_run_migrations(connection: Connection) -> None:
         context.run_migrations()
 
 
+import uuid
+
+def _unique_stmt_name(*args, **kwargs) -> str:
+    return f"__asyncpg_stmt_{uuid.uuid4().hex}__"
+
 async def run_async_migrations() -> None:
     """In this scenario we need to create an Engine
     and associate a connection with the context.
@@ -77,12 +82,14 @@ async def run_async_migrations() -> None:
     if "postgresql" in settings.DATABASE_URL or "asyncpg" in settings.DATABASE_URL:
         connect_args["statement_cache_size"] = 0
         connect_args["prepared_statement_cache_size"] = 0
+        connect_args["prepared_statement_name_func"] = _unique_stmt_name
 
     connectable = async_engine_from_config(
         configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
         connect_args=connect_args,
+        execution_options={"compiled_cache": None},
     )
 
     async with connectable.connect() as connection:
