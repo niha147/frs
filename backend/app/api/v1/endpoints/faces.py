@@ -13,12 +13,12 @@ from app.models.faculty import Faculty
 from app.models.student import Student
 from app.models.face_embedding import FaceEmbedding
 from app.schemas.face import FaceOut
-from app.services.storage import LocalStorageService
+from app.services.storage import SupabaseStorageService
 
 router = APIRouter()
 face_service = FaceEmbeddingService()
 liveness_service = LivenessService()
-storage_service = LocalStorageService()
+storage_service = SupabaseStorageService()
 
 @router.post("/students/{student_id}/faces", response_model=FaceOut, status_code=status.HTTP_201_CREATED)
 async def register_student_face(
