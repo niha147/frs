@@ -25,9 +25,13 @@ class Settings(BaseSettings):
     FACE_SIMILARITY_THRESHOLD: float = 0.60
     FACE_DUPLICATE_THRESHOLD: float = 0.93
     
-    # Local Storage Paths
+    # Local Storage Paths (fallback only — not persistent on most cloud hosts)
     STORAGE_PATH: str = "storage"
     FACES_STORAGE_DIR: str = "storage/faces"
     REPORTS_STORAGE_DIR: str = "storage/reports"
+
+    # Supabase Storage (persistent — use this in deployed environments)
+    SUPABASE_URL: str = ""
+    SUPABASE_SERVICE_KEY: str = ""
 
 settings = Settings()
