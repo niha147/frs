@@ -2,12 +2,19 @@ from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from app.core.config import settings
 
+connect_args = {}
+if "postgresql" in settings.DATABASE_URL or "asyncpg" in settings.DATABASE_URL:
+    connect_args["statement_cache_size"] = 0
+    connect_args["prepared_statement_cache_size"] = 0
+
 # Create async database engine
-# Future=True is default in 2.0 but explicitly passed for clarity
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
-    future=True
+    future=True,
+    connect_args=connect_args,
+    pool_pre_ping=True,
+    pool_recycle=300
 )
 
 # Create session maker with expire_on_commit=False for async safety

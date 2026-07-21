@@ -1,4 +1,5 @@
 import os
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -14,6 +15,20 @@ class Settings(BaseSettings):
     
     # Database
     DATABASE_URL: str
+
+    @field_validator("DATABASE_URL", mode="after")
+    @classmethod
+    def sanitize_database_url(cls, v: str) -> str:
+        if isinstance(v, str) and ("postgresql" in v or "asyncpg" in v):
+            params_to_add = []
+            if "prepared_statement_cache_size" not in v:
+                params_to_add.append("prepared_statement_cache_size=0")
+            if "statement_cache_size" not in v:
+                params_to_add.append("statement_cache_size=0")
+            if params_to_add:
+                delimiter = "&" if "?" in v else "?"
+                v = f"{v}{delimiter}{'&'.join(params_to_add)}"
+        return v
     
     # Security
     JWT_SECRET: str
@@ -35,3 +50,4 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_KEY: str = ""
 
 settings = Settings()
+
