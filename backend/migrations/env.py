@@ -1,13 +1,16 @@
 import asyncio
+import logging
 import os
 import sys
 from logging.config import fileConfig
 
 from sqlalchemy import pool
-from sqlalchemy.engine import Connection
+from sqlalchemy.engine import Connection, make_url
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
+
+logger = logging.getLogger("alembic.env")
 
 # Add parent directory to path so app modules are discoverable
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..')))
@@ -83,6 +86,31 @@ async def run_async_migrations() -> None:
         connect_args["statement_cache_size"] = 0
         connect_args["prepared_statement_cache_size"] = 0
         connect_args["prepared_statement_name_func"] = _unique_stmt_name
+
+    # Startup diagnostics logging
+    try:
+        url_obj = make_url(settings.DATABASE_URL)
+        driver_prefix = f"{url_obj.drivername}://"
+    except Exception:
+        driver_prefix = settings.DATABASE_URL.split("://")[0] + "://" if "://" in settings.DATABASE_URL else settings.DATABASE_URL
+
+    stmt_cache_active = connect_args.get("statement_cache_size") == 0
+    prep_stmt_cache_active = connect_args.get("prepared_statement_cache_size") == 0
+    name_func_attached = "prepared_statement_name_func" in connect_args
+
+    log_banner = (
+        "==================================================\n"
+        "CUSTOM PREPARED STATEMENT PATCH ACTIVE\n"
+        "Logging immediately before Alembic migration engine creation:\n"
+        f"  - Full SQLAlchemy URL driver prefix: {driver_prefix}\n"
+        f"  - statement_cache_size=0 active: {stmt_cache_active}\n"
+        f"  - prepared_statement_cache_size=0 active: {prep_stmt_cache_active}\n"
+        f"  - prepared_statement_name_func attached: {name_func_attached}\n"
+        f"  - Exact connect_args passed into create_async_engine(): {connect_args}\n"
+        "=================================================="
+    )
+    print(log_banner, flush=True)
+    logger.info(log_banner)
 
     connectable = async_engine_from_config(
         configuration,
